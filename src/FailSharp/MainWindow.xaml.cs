@@ -119,15 +119,23 @@ public partial class MainWindow : Window
         SaveSettings();
     }
 
+    /// <summary>Raised whenever Enabled changes via the window's own checkbox, so other UI (the tray menu) can mirror it.</summary>
+    public event EventHandler<bool>? EnabledChanged;
+
+    /// <summary>Sets the Enabled checkbox from an external source (e.g. the tray menu). A no-op if already at that value.</summary>
+    public void SetEnabled(bool enabled) => EnabledCheckBox.IsChecked = enabled;
+
     private void OnSettingChanged(object sender, RoutedEventArgs e)
     {
+        var enabled = EnabledCheckBox.IsChecked == true;
         if (_initializing)
         {
             return;
         }
 
-        _engine.Settings.Enabled = EnabledCheckBox.IsChecked == true;
+        _engine.Settings.Enabled = enabled;
         SaveSettings();
+        EnabledChanged?.Invoke(this, enabled);
     }
 
     private void UpdateProbabilityLabel() => ProbabilityLabel.Text = $"Chance: {ProbabilitySlider.Value:0}%";

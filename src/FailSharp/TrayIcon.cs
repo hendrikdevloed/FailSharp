@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Windows;
 using System.Windows.Forms;
 using FailSharp.Core;
 
@@ -9,13 +8,27 @@ namespace FailSharp;
 public sealed class TrayIcon : IDisposable
 {
     private readonly NotifyIcon _notifyIcon;
-    private readonly Window _mainWindow;
+    private readonly MainWindow _mainWindow;
     private readonly FailureEngine _engine;
+    private readonly ToolStripMenuItem _enabledItem;
 
-    public TrayIcon(Window mainWindow, NativeControlClient menuClient, FailureEngine engine)
+    public TrayIcon(MainWindow mainWindow, NativeControlClient menuClient, FailureEngine engine)
     {
         _mainWindow = mainWindow;
         _engine = engine;
+
+        _enabledItem = new ToolStripMenuItem("Enabled")
+        {
+            CheckOnClick = true,
+            Checked = engine.Settings.Enabled,
+        };
+        _enabledItem.CheckedChanged += (_, _) =>
+        {
+            _engine.Settings.Enabled = _enabledItem.Checked;
+            SettingsStore.Save(_engine.Settings);
+            _mainWindow.Dispatcher.BeginInvoke(() => _mainWindow.SetEnabled(_enabledItem.Checked));
+        };
+        _mainWindow.EnabledChanged += (_, enabled) => _enabledItem.Checked = enabled;
 
         var alwaysOnTopItem = new ToolStripMenuItem("Always on top")
         {
@@ -31,6 +44,7 @@ public sealed class TrayIcon : IDisposable
 
         var contextMenu = new ContextMenuStrip();
         contextMenu.Items.Add("Open Settings", null, (_, _) => ShowMainWindow());
+        contextMenu.Items.Add(_enabledItem);
         contextMenu.Items.Add(alwaysOnTopItem);
         contextMenu.Items.Add("Exit", null, (_, _) => System.Windows.Application.Current.Shutdown());
 
@@ -52,10 +66,10 @@ public sealed class TrayIcon : IDisposable
         return stream is not null ? new System.Drawing.Icon(stream) : System.Drawing.SystemIcons.Application;
     }
 
-    private void ShowMainWindow()
+    public void ShowMainWindow()
     {
         _mainWindow.Show();
-        _mainWindow.WindowState = WindowState.Normal;
+        _mainWindow.WindowState = System.Windows.WindowState.Normal;
         _mainWindow.Activate();
     }
 
