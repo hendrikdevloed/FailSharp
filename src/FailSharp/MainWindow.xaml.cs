@@ -52,13 +52,20 @@ public partial class MainWindow : Window
 
     private void RefreshStatus()
     {
-        StatusText.Text = $"SimConnect: {(_simVarClient.IsConnected ? "connected" : "waiting for sim...")}  |  Menu: {(_menuClient.IsConnected ? "connected" : "waiting for sim...")}";
+        SetConnectionIndicator(SimConnectStatusText, "SimConnect", _simVarClient.IsConnected);
+        SetConnectionIndicator(MenuStatusText, "Menu", _menuClient.IsConnected);
 
         if (_simVarClient.IsConnected && !_enginesPopulated)
         {
             _enginesPopulated = true;
             _ = PopulateEnginesAsync();
         }
+    }
+
+    private static void SetConnectionIndicator(System.Windows.Controls.TextBlock textBlock, string label, bool connected)
+    {
+        textBlock.Text = connected ? $"{label} ✓" : $"{label} ✕";
+        textBlock.Foreground = connected ? System.Windows.Media.Brushes.Green : System.Windows.Media.Brushes.Gray;
     }
 
     private async Task PopulateEnginesAsync()

@@ -59,13 +59,22 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <CheckBox Grid.Row="0" x:Name="EnabledCheckBox" Content="Enabled" Margin="0,0,0,10"
-                  Checked="OnSettingChanged" Unchecked="OnSettingChanged" />
+        <Grid Grid.Row="0" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <CheckBox Grid.Column="0" x:Name="EnabledCheckBox" Content="Enabled" VerticalAlignment="Center"
+                      Checked="OnSettingChanged" Unchecked="OnSettingChanged" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock x:Name="SimConnectStatusText" Text="SimConnect ✕" FontSize="11" Foreground="Gray"
+                           VerticalAlignment="Center" Margin="0,0,10,0" />
+                <TextBlock x:Name="MenuStatusText" Text="Menu ✕" FontSize="11" Foreground="Gray"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </Grid>
 
         <Grid Grid.Row="1" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
@@ -103,12 +112,11 @@
                     Style="{StaticResource RangeSliderStyle}" ValueChanged="OnSpeedRangeChanged" />
         </Grid>
 
-        <TextBlock Grid.Row="4" Text="Eligible engines:" Margin="0,0,0,4" />
-        <StackPanel Grid.Row="5" x:Name="EnginesPanel" Orientation="Horizontal" Margin="0,0,0,10" />
-
-        <Button Grid.Row="6" x:Name="RepairButton" Content="Repair all engines" Padding="8,4"
-                HorizontalAlignment="Left" Click="OnRepairClicked" Margin="0,0,0,10" />
-
-        <TextBlock Grid.Row="7" x:Name="StatusText" Text="Connecting..." Foreground="Gray" FontSize="11" />
+        <StackPanel Grid.Row="4" Orientation="Horizontal">
+            <Button x:Name="RepairButton" Content="Repair all engines" Padding="8,4" VerticalAlignment="Center"
+                    Click="OnRepairClicked" Margin="0,0,12,0" />
+            <TextBlock Text="Engines:" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <StackPanel x:Name="EnginesPanel" Orientation="Horizontal" VerticalAlignment="Center" />
+        </StackPanel>
     </Grid>
 </Window>
