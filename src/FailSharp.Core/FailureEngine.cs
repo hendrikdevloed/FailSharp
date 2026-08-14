@@ -54,6 +54,12 @@ public sealed class FailureEngine
             return null;
         }
 
+        var airspeed = await _client.GetIndicatedAirspeedAsync(ct).ConfigureAwait(false);
+        if (airspeed < settings.MinSpeedKts || airspeed > settings.MaxSpeedKts)
+        {
+            return null;
+        }
+
         if (_random.NextDouble() >= settings.ProbabilityPercent / 100.0)
         {
             return null;

@@ -32,6 +32,13 @@ internal static class NativeSimConnect
     [DllImport(DllName)]
     public static extern int SimConnect_GetNextDispatch(IntPtr hSimConnect, out IntPtr ppData, out uint pcbData);
 
+    [DllImport(DllName, CharSet = CharSet.Ansi)]
+    public static extern int SimConnect_MapClientEventToSimEvent(IntPtr hSimConnect, uint eventId, string eventName);
+
+    /// <summary>ObjectID 0 == SIMCONNECT_OBJECT_ID_USER (the user's own aircraft).</summary>
+    [DllImport(DllName)]
+    public static extern int SimConnect_TransmitClientEvent(IntPtr hSimConnect, uint objectId, uint eventId, uint data, uint groupId, uint flags);
+
     /// <summary>SIMCONNECT_RECV.dwID is the third DWORD in the struct (offset 8).</summary>
     public static uint ReadRecvId(IntPtr data) => unchecked((uint)Marshal.ReadInt32(data, 8));
 

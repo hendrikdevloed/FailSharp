@@ -10,6 +10,8 @@ public interface ISimVarClient
 
     Task<int> GetEngineCountAsync(CancellationToken ct = default);
 
+    Task<double> GetIndicatedAirspeedAsync(CancellationToken ct = default);
+
     Task<bool> IsEngineFailedAsync(int engineIndex, CancellationToken ct = default);
 
     Task FailEngineAsync(int engineIndex, CancellationToken ct = default);

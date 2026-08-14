@@ -8,12 +8,12 @@ public partial class MainWindow : Window
 {
     private readonly FailureEngine _engine;
     private readonly ISimVarClient _simVarClient;
-    private readonly MenuClient _menuClient;
+    private readonly NativeControlClient _menuClient;
     private readonly List<CheckBox> _engineCheckBoxes = new();
     private bool _initializing = true;
     private bool _enginesPopulated;
 
-    public MainWindow(FailureEngine engine, ISimVarClient simVarClient, MenuClient menuClient)
+    public MainWindow(FailureEngine engine, ISimVarClient simVarClient, NativeControlClient menuClient)
     {
         InitializeComponent();
 
@@ -24,7 +24,19 @@ public partial class MainWindow : Window
         var settings = engine.Settings;
         EnabledCheckBox.IsChecked = settings.Enabled;
         ProbabilitySlider.Value = settings.ProbabilityPercent;
-        IntervalSlider.Value = settings.CheckIntervalMinutes;
+        IntervalSlider.Value = ClosestIntervalIndex(settings.CheckIntervalMinutes);
+        MinSpeedSlider.Value = settings.MinSpeedKts;
+        MaxSpeedSlider.Value = settings.MaxSpeedKts;
+        Topmost = settings.AlwaysOnTop;
+
+        // Slider.Value defaults to its Minimum (0), so if a loaded setting maps to that same
+        // value, the assignments above are no-ops and ValueChanged never fires — the thumb still
+        // ends up in the right place (it *is* Value), but a label driven only by the event would
+        // be left showing its XAML placeholder text. Refresh all of them explicitly instead.
+        UpdateProbabilityLabel();
+        UpdateIntervalLabel();
+        UpdateSpeedRangeVisuals();
+
         _initializing = false;
 
         _simVarClient.ConnectionStatusChanged += (_, _) => Dispatcher.BeginInvoke(RefreshStatus);
@@ -111,9 +123,11 @@ public partial class MainWindow : Window
         SaveSettings();
     }
 
+    private void UpdateProbabilityLabel() => ProbabilityLabel.Text = $"Chance: {ProbabilitySlider.Value:0}%";
+
     private void OnProbabilityChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        ProbabilityLabel.Text = $"Chance per check: {e.NewValue:0}%";
+        UpdateProbabilityLabel();
         if (_initializing)
         {
             return;
@@ -123,15 +137,79 @@ public partial class MainWindow : Window
         SaveSettings();
     }
 
+    private static int ClosestIntervalIndex(double minutes)
+    {
+        var options = CheckIntervalOptions.Minutes;
+        var bestIndex = 0;
+        var bestDiff = double.MaxValue;
+        for (var i = 0; i < options.Length; i++)
+        {
+            var diff = Math.Abs(options[i] - minutes);
+            if (diff < bestDiff)
+            {
+                bestDiff = diff;
+                bestIndex = i;
+            }
+        }
+
+        return bestIndex;
+    }
+
+    private void UpdateIntervalLabel()
+    {
+        var minutes = CheckIntervalOptions.Minutes[(int)IntervalSlider.Value];
+        IntervalLabel.Text = $"Every: {CheckIntervalOptions.Format(minutes)}";
+    }
+
     private void OnIntervalChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        IntervalLabel.Text = $"Check interval: {e.NewValue:0} min";
+        UpdateIntervalLabel();
         if (_initializing)
         {
             return;
         }
 
-        _engine.Settings.CheckIntervalMinutes = e.NewValue;
+        _engine.Settings.CheckIntervalMinutes = CheckIntervalOptions.Minutes[(int)e.NewValue];
+        SaveSettings();
+    }
+
+    private void UpdateSpeedRangeVisuals()
+    {
+        var min = MinSpeedSlider.Value;
+        var max = MaxSpeedSlider.Value;
+        var upper = MinSpeedSlider.Maximum;
+
+        SpeedRangeLabel.Text = $"Active between {min:0}-{max:0} kts";
+        BelowMinColumn.Width = new GridLength(min, GridUnitType.Star);
+        InRangeColumn.Width = new GridLength(max - min, GridUnitType.Star);
+        AboveMaxColumn.Width = new GridLength(upper - max, GridUnitType.Star);
+    }
+
+    private void OnSpeedRangeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (MinSpeedSlider.Value > MaxSpeedSlider.Value)
+        {
+            if (sender == MinSpeedSlider)
+            {
+                MaxSpeedSlider.Value = MinSpeedSlider.Value;
+            }
+            else
+            {
+                MinSpeedSlider.Value = MaxSpeedSlider.Value;
+            }
+
+            return; // the resulting change re-enters this handler and finishes the update
+        }
+
+        UpdateSpeedRangeVisuals();
+
+        if (_initializing)
+        {
+            return;
+        }
+
+        _engine.Settings.MinSpeedKts = MinSpeedSlider.Value;
+        _engine.Settings.MaxSpeedKts = MaxSpeedSlider.Value;
         SaveSettings();
     }
 

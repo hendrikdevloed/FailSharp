@@ -73,6 +73,54 @@ public class FailureEngineTests
     }
 
     [Fact]
+    public async Task ConsiderFailure_BelowMinSpeed_NeverFails()
+    {
+        var client = new FakeSimVarClient { IndicatedAirspeed = 40 };
+        var settings = new FailureSettings { Enabled = true, ProbabilityPercent = 100, MinSpeedKts = 60, MaxSpeedKts = 150 };
+        var engine = new FailureEngine(client, settings);
+
+        var result = await engine.ConsiderFailureAsync();
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task ConsiderFailure_AboveMaxSpeed_NeverFails()
+    {
+        var client = new FakeSimVarClient { IndicatedAirspeed = 200 };
+        var settings = new FailureSettings { Enabled = true, ProbabilityPercent = 100, MinSpeedKts = 60, MaxSpeedKts = 150 };
+        var engine = new FailureEngine(client, settings);
+
+        var result = await engine.ConsiderFailureAsync();
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task ConsiderFailure_WithinSpeedRange_CanFail()
+    {
+        var client = new FakeSimVarClient { IndicatedAirspeed = 100 };
+        var settings = new FailureSettings { Enabled = true, ProbabilityPercent = 100, MinSpeedKts = 60, MaxSpeedKts = 150 };
+        var engine = new FailureEngine(client, settings);
+
+        var result = await engine.ConsiderFailureAsync();
+
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public async Task ConsiderFailure_AtSpeedBoundaries_IsInclusive()
+    {
+        var settings = new FailureSettings { Enabled = true, ProbabilityPercent = 100, MinSpeedKts = 60, MaxSpeedKts = 150 };
+
+        var atMin = new FakeSimVarClient { IndicatedAirspeed = 60 };
+        Assert.NotNull(await new FailureEngine(atMin, settings).ConsiderFailureAsync());
+
+        var atMax = new FakeSimVarClient { IndicatedAirspeed = 150 };
+        Assert.NotNull(await new FailureEngine(atMax, settings).ConsiderFailureAsync());
+    }
+
+    [Fact]
     public async Task ConsiderFailure_WhenAllEligibleEnginesAlreadyFailed_ReturnsNull()
     {
         var client = new FakeSimVarClient { EngineCount = 1 };

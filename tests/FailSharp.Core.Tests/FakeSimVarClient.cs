@@ -10,6 +10,8 @@ internal sealed class FakeSimVarClient : ISimVarClient
 
     public int EngineCount { get; set; } = 2;
 
+    public double IndicatedAirspeed { get; set; } = 100.0;
+
     public event EventHandler? ConnectionStatusChanged;
 
     public IReadOnlySet<int> FailedEngines => _failed;
@@ -22,6 +24,8 @@ internal sealed class FakeSimVarClient : ISimVarClient
     }
 
     public Task<int> GetEngineCountAsync(CancellationToken ct = default) => Task.FromResult(EngineCount);
+
+    public Task<double> GetIndicatedAirspeedAsync(CancellationToken ct = default) => Task.FromResult(IndicatedAirspeed);
 
     public Task<bool> IsEngineFailedAsync(int engineIndex, CancellationToken ct = default) =>
         Task.FromResult(_failed.Contains(engineIndex));

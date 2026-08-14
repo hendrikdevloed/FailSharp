@@ -8,6 +8,26 @@ public sealed class FailureSettings
     public double ProbabilityPercent { get; set; } = 5.0;
     public double CheckIntervalMinutes { get; set; } = 5.0;
     public HashSet<int> EligibleEngines { get; set; } = new() { 1, 2, 3, 4 };
+    public double MinSpeedKts { get; set; } = 60.0;
+    public double MaxSpeedKts { get; set; } = 150.0;
+
+    /// <summary>UI preference (window stays topmost so focusing the sim doesn't hide it), not a failure parameter — kept here rather than in a second settings file for one bool.</summary>
+    public bool AlwaysOnTop { get; set; } = true;
+}
+
+/// <summary>
+/// The discrete set of check-interval stops offered in the UI: fine-grained at the low end,
+/// coarser as it grows (30s, then 1' steps up to 10', then 5' steps up to 20', then bigger jumps to 60').
+/// </summary>
+public static class CheckIntervalOptions
+{
+    public static readonly double[] Minutes =
+    {
+        0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 45, 60,
+    };
+
+    public static string Format(double minutes) =>
+        minutes < 1 ? $"{(int)Math.Round(minutes * 60)} sec" : $"{(int)Math.Round(minutes)} min";
 }
 
 public static class SettingsStore

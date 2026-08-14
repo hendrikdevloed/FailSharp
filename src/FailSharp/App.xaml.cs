@@ -6,7 +6,7 @@ public partial class App : System.Windows.Application
 {
     private readonly CancellationTokenSource _cts = new();
     private SimConnectNetClient? _simVarClient;
-    private MenuClient? _menuClient;
+    private NativeControlClient? _nativeControlClient;
     private FailureEngine? _engine;
     private TrayIcon? _trayIcon;
 
@@ -15,25 +15,25 @@ public partial class App : System.Windows.Application
         base.OnStartup(e);
 
         var settings = SettingsStore.Load();
-        var simVarClient = new SimConnectNetClient();
-        var menuClient = new MenuClient();
+        var nativeControlClient = new NativeControlClient();
+        var simVarClient = new SimConnectNetClient(nativeControlClient);
         var engine = new FailureEngine(simVarClient, settings);
 
         _simVarClient = simVarClient;
-        _menuClient = menuClient;
+        _nativeControlClient = nativeControlClient;
         _engine = engine;
 
-        var mainWindow = new MainWindow(engine, simVarClient, menuClient);
-        _trayIcon = new TrayIcon(mainWindow, menuClient);
+        var mainWindow = new MainWindow(engine, simVarClient, nativeControlClient);
+        _trayIcon = new TrayIcon(mainWindow, nativeControlClient, engine);
 
-        _ = RunConnectLoopAsync(simVarClient, menuClient, _cts.Token);
+        _ = RunConnectLoopAsync(simVarClient, nativeControlClient, _cts.Token);
         _ = engine.RunAsync(_cts.Token);
     }
 
-    private static async Task RunConnectLoopAsync(SimConnectNetClient simVarClient, MenuClient menuClient, CancellationToken ct)
+    private static async Task RunConnectLoopAsync(SimConnectNetClient simVarClient, NativeControlClient nativeControlClient, CancellationToken ct)
     {
         // SimConnectNetClient auto-reconnects internally once connected; ConnectAsync just needs
-        // to eventually succeed the first time. MenuClient has no auto-reconnect, so it's retried here.
+        // to eventually succeed the first time. NativeControlClient has no auto-reconnect, so it's retried here.
         while (!ct.IsCancellationRequested)
         {
             if (!simVarClient.IsConnected)
@@ -52,9 +52,9 @@ public partial class App : System.Windows.Application
                 }
             }
 
-            if (!menuClient.IsConnected)
+            if (!nativeControlClient.IsConnected)
             {
-                menuClient.Connect();
+                nativeControlClient.Connect();
             }
 
             try
@@ -72,7 +72,7 @@ public partial class App : System.Windows.Application
     {
         _cts.Cancel();
         _trayIcon?.Dispose();
-        _menuClient?.Dispose();
+        _nativeControlClient?.Dispose();
         _simVarClient?.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2));
         base.OnExit(e);
     }
