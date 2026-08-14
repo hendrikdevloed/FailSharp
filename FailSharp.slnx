@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FailSharp.Core/FailSharp.Core.csproj" />
+    <Project Path="src/FailSharp/FailSharp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FailSharp.Core.Tests/FailSharp.Core.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\FailSharp.Core\FailSharp.Core.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      SimConnect.NET supplies the native SimConnect.dll as a win-x64 runtime asset (hence
+      RuntimeIdentifier above so it actually gets copied to the output directory).
+      The MENU API (SimConnect_MenuAddItem etc.) has no equivalent in SimConnect.NET, so
+      FailSharp.App/NativeSimConnect.cs P/Invokes that same native SimConnect.dll directly
+      for a second, menu-only connection. The official managed wrapper
+      (Microsoft.FlightSimulator.SimConnect.dll) is NOT referenced: it's a C++/CLI mixed-mode
+      (IJW) assembly (confirmed via its CLR header: ILONLY=false, NATIVE_ENTRYPOINT=true),
+      which CoreCLR/.NET 5+ cannot load at all, under any project configuration.
+    -->
+    <PackageReference Include="SimConnect.NET" Version="0.2.2" />
+  </ItemGroup>
+
+</Project>
