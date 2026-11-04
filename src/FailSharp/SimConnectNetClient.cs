@@ -32,6 +32,19 @@ public sealed class SimConnectNetClient : ISimVarClient, IAsyncDisposable
     public async Task<double> GetIndicatedAirspeedAsync(CancellationToken ct = default) =>
         await _client.SimVars.GetAsync<double>("AIRSPEED INDICATED", "knots", cancellationToken: ct).ConfigureAwait(false);
 
+    /// <summary>User aircraft position and the ambient wind at it (direction the wind blows FROM, degrees true).</summary>
+    public async Task<(double Latitude, double Longitude, double WindFromTrue, double WindKts)> GetPositionAndWindAsync(CancellationToken ct = default)
+    {
+        var lat = await _client.SimVars.GetAsync<double>("PLANE LATITUDE", "degrees", cancellationToken: ct).ConfigureAwait(false);
+        var lon = await _client.SimVars.GetAsync<double>("PLANE LONGITUDE", "degrees", cancellationToken: ct).ConfigureAwait(false);
+        var windDir = await _client.SimVars.GetAsync<double>("AMBIENT WIND DIRECTION", "degrees", cancellationToken: ct).ConfigureAwait(false);
+        var windKts = await _client.SimVars.GetAsync<double>("AMBIENT WIND VELOCITY", "knots", cancellationToken: ct).ConfigureAwait(false);
+        return (lat, lon, windDir, windKts);
+    }
+
+    public async Task<bool> IsEngineRunningAsync(int engineIndex, CancellationToken ct = default) =>
+        await _client.SimVars.GetAsync<int>($"GENERAL ENG COMBUSTION:{engineIndex}", "Bool", cancellationToken: ct).ConfigureAwait(false) != 0;
+
     public async Task<bool> IsEngineFailedAsync(int engineIndex, CancellationToken ct = default) =>
         await _client.SimVars.GetAsync<int>($"GENERAL ENG FAILED:{engineIndex}", "Bool", cancellationToken: ct).ConfigureAwait(false) != 0;
 

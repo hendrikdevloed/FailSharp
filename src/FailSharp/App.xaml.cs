@@ -50,7 +50,8 @@ public partial class App : System.Windows.Application
         _nativeControlClient = nativeControlClient;
         _engine = engine;
 
-        var mainWindow = new MainWindow(engine, simVarClient, nativeControlClient);
+        var positioner = new AircraftPositioner(simVarClient, nativeControlClient, engine);
+        var mainWindow = new MainWindow(engine, simVarClient, nativeControlClient, positioner);
         var trayIcon = new TrayIcon(mainWindow, nativeControlClient, engine);
         _trayIcon = trayIcon;
 

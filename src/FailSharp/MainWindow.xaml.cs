@@ -9,17 +9,20 @@ public partial class MainWindow : Window
     private readonly FailureEngine _engine;
     private readonly ISimVarClient _simVarClient;
     private readonly NativeControlClient _menuClient;
+    private readonly AircraftPositioner _positioner;
     private readonly List<CheckBox> _engineCheckBoxes = new();
     private bool _initializing = true;
     private bool _enginesPopulated;
+    private bool _placing;
 
-    public MainWindow(FailureEngine engine, ISimVarClient simVarClient, NativeControlClient menuClient)
+    public MainWindow(FailureEngine engine, ISimVarClient simVarClient, NativeControlClient menuClient, AircraftPositioner positioner)
     {
         InitializeComponent();
 
         _engine = engine;
         _simVarClient = simVarClient;
         _menuClient = menuClient;
+        _positioner = positioner;
 
         var settings = engine.Settings;
         EnabledCheckBox.IsChecked = settings.Enabled;
@@ -36,8 +39,13 @@ public partial class MainWindow : Window
         UpdateProbabilityLabel();
         UpdateIntervalLabel();
         UpdateSpeedRangeVisuals();
+        LoadPositionSettings();
 
         _initializing = false;
+
+        // TabControl only measures the selected tab, so with SizeToContent the window would resize on
+        // every tab switch. Pin both tabs to the taller of the two once the first layout pass is done.
+        Loaded += (_, _) => EqualizeTabHeights();
 
         _simVarClient.ConnectionStatusChanged += (_, _) => Dispatcher.BeginInvoke(RefreshStatus);
         _menuClient.ConnectionStatusChanged += (_, _) => Dispatcher.BeginInvoke(RefreshStatus);
@@ -54,6 +62,7 @@ public partial class MainWindow : Window
     {
         SetConnectionIndicator(SimConnectStatusText, "SimConnect", _simVarClient.IsConnected);
         SetConnectionIndicator(MenuStatusText, "Menu", _menuClient.IsConnected);
+        UpdatePlaceButtons();
 
         if (_simVarClient.IsConnected && !_enginesPopulated)
         {
@@ -242,6 +251,118 @@ public partial class MainWindow : Window
         finally
         {
             RepairButton.IsEnabled = true;
+        }
+    }
+
+    private void EqualizeTabHeights()
+    {
+        var width = FailuresPanel.ActualWidth;
+        PositionPanel.Measure(new System.Windows.Size(width, double.PositiveInfinity));
+        var height = Math.Max(FailuresPanel.ActualHeight, PositionPanel.DesiredSize.Height);
+        FailuresPanel.MinHeight = height;
+        PositionPanel.MinHeight = height;
+    }
+
+    private void LoadPositionSettings()
+    {
+        var s = _engine.Settings;
+        SpeedBox.Text = s.PositionSpeedKts.ToString("0");
+        OverheadAglBox.Text = s.OverheadAglFt.ToString("0");
+        DownwindAglBox.Text = s.DownwindAglFt.ToString("0");
+        BaseAglBox.Text = s.BaseAglFt.ToString("0");
+        FinalAglBox.Text = s.FinalAglFt.ToString("0");
+        RightPatternCheckBox.IsChecked = s.RightHandPattern;
+    }
+
+    /// <summary>Parses a numeric box; on invalid input restores the last good value so the box never shows something that isn't used.</summary>
+    private static double ReadBox(System.Windows.Controls.TextBox box, double current, double min, double max)
+    {
+        if (double.TryParse(box.Text.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.CurrentCulture, out var value)
+            && value >= min && value <= max)
+        {
+            box.Text = value.ToString("0");
+            return Math.Round(value);
+        }
+
+        box.Text = current.ToString("0");
+        return current;
+    }
+
+    private void CommitPositionSettings()
+    {
+        var s = _engine.Settings;
+        s.PositionSpeedKts = ReadBox(SpeedBox, s.PositionSpeedKts, 30, 400);
+        s.OverheadAglFt = ReadBox(OverheadAglBox, s.OverheadAglFt, 100, 20000);
+        s.DownwindAglFt = ReadBox(DownwindAglBox, s.DownwindAglFt, 100, 20000);
+        s.BaseAglFt = ReadBox(BaseAglBox, s.BaseAglFt, 100, 20000);
+        s.FinalAglFt = ReadBox(FinalAglBox, s.FinalAglFt, 100, 20000);
+        s.RightHandPattern = RightPatternCheckBox.IsChecked == true;
+    }
+
+    private void OnPositionValueCommitted(object sender, RoutedEventArgs e)
+    {
+        if (_initializing)
+        {
+            return;
+        }
+
+        CommitPositionSettings();
+        SaveSettings();
+    }
+
+    private double HeightFor(PositionTarget target) => target switch
+    {
+        PositionTarget.Overhead => _engine.Settings.OverheadAglFt,
+        PositionTarget.Downwind => _engine.Settings.DownwindAglFt,
+        PositionTarget.Base => _engine.Settings.BaseAglFt,
+        _ => _engine.Settings.FinalAglFt,
+    };
+
+    private void UpdatePlaceButtons()
+    {
+        var enabled = _positioner.IsAvailable && !_placing;
+        OverheadButton.IsEnabled = enabled;
+        DownwindButton.IsEnabled = enabled;
+        BaseButton.IsEnabled = enabled;
+        FinalButton.IsEnabled = enabled;
+
+        if (!_positioner.IsAvailable && !_placing)
+        {
+            PositionStatusText.Text = "Waiting for the simulator…";
+        }
+        else if (PositionStatusText.Text == "Waiting for the simulator…")
+        {
+            PositionStatusText.Text = string.Empty;
+        }
+    }
+
+    private async void OnPlaceClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button { Tag: string tag } || !Enum.TryParse<PositionTarget>(tag, out var target))
+        {
+            return;
+        }
+
+        // A click doesn't necessarily move focus out of a box first, so commit whatever was just typed.
+        CommitPositionSettings();
+        SaveSettings();
+
+        _placing = true;
+        UpdatePlaceButtons();
+        PositionStatusText.Text = "Positioning…";
+        try
+        {
+            var s = _engine.Settings;
+            PositionStatusText.Text = await _positioner.PlaceAsync(target, HeightFor(target), s.PositionSpeedKts, s.RightHandPattern).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            PositionStatusText.Text = ex.Message;
+        }
+        finally
+        {
+            _placing = false;
+            UpdatePlaceButtons();
         }
     }
 

@@ -50,72 +50,148 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="PlaceButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="68" />
+            <Setter Property="Padding" Value="4,2" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <EventSetter Event="Click" Handler="OnPlaceClicked" />
+        </Style>
+
+        <Style x:Key="NumberBoxStyle" TargetType="TextBox">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="HorizontalContentAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <EventSetter Event="LostFocus" Handler="OnPositionValueCommitted" />
+        </Style>
+
+        <Style x:Key="UnitStyle" TargetType="TextBlock">
+            <Setter Property="Margin" Value="3,0,0,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="Gray" />
+        </Style>
     </Window.Resources>
 
-    <Grid Margin="14">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <Grid Margin="6">
+        <TabControl x:Name="Tabs" Padding="8,8,8,6">
+            <TabItem Header="Failures">
+                <Grid x:Name="FailuresPanel">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="0,0,0,10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <CheckBox Grid.Column="0" x:Name="EnabledCheckBox" Content="Enabled" VerticalAlignment="Center"
-                      Checked="OnSettingChanged" Unchecked="OnSettingChanged" />
-            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock x:Name="SimConnectStatusText" Text="SimConnect ✕" FontSize="11" Foreground="Gray"
-                           VerticalAlignment="Center" Margin="0,0,10,0" />
-                <TextBlock x:Name="MenuStatusText" Text="Menu ✕" FontSize="11" Foreground="Gray"
-                           VerticalAlignment="Center" />
-            </StackPanel>
-        </Grid>
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock x:Name="ProbabilityLabel" Text="Chance: 5%" />
+                            <Slider x:Name="ProbabilitySlider" Minimum="0" Maximum="100" TickFrequency="5"
+                                    ValueChanged="OnProbabilityChanged" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock x:Name="IntervalLabel" Text="Every: 5 min" />
+                            <Slider x:Name="IntervalSlider" Minimum="0" Maximum="15" TickFrequency="1" IsSnapToTickEnabled="True"
+                                    ValueChanged="OnIntervalChanged" />
+                        </StackPanel>
+                    </Grid>
 
-        <Grid Grid.Row="1" Margin="0,0,0,10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="16" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0">
-                <TextBlock x:Name="ProbabilityLabel" Text="Chance: 5%" />
-                <Slider x:Name="ProbabilitySlider" Minimum="0" Maximum="100" TickFrequency="5"
-                        ValueChanged="OnProbabilityChanged" />
-            </StackPanel>
-            <StackPanel Grid.Column="2">
-                <TextBlock x:Name="IntervalLabel" Text="Every: 5 min" />
-                <Slider x:Name="IntervalSlider" Minimum="0" Maximum="15" TickFrequency="1" IsSnapToTickEnabled="True"
-                        ValueChanged="OnIntervalChanged" />
-            </StackPanel>
-        </Grid>
+                    <TextBlock Grid.Row="1" x:Name="SpeedRangeLabel" Text="Active between 60-150 kts" Margin="0,0,0,2" />
+                    <Grid Grid.Row="2" Height="24" Margin="0,0,0,8">
+                        <Grid x:Name="SpeedRangeFillGrid" VerticalAlignment="Center" Height="6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition x:Name="BelowMinColumn" Width="60*" />
+                                <ColumnDefinition x:Name="InRangeColumn" Width="90*" />
+                                <ColumnDefinition x:Name="AboveMaxColumn" Width="100*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Background="#33000000" CornerRadius="3" />
+                            <Border Grid.Column="1" Background="#FF3B82C4" CornerRadius="3" />
+                            <Border Grid.Column="2" Background="#33000000" CornerRadius="3" />
+                        </Grid>
+                        <Slider x:Name="MinSpeedSlider" Minimum="0" Maximum="250" TickFrequency="5" IsSnapToTickEnabled="True"
+                                Style="{StaticResource RangeSliderStyle}" ValueChanged="OnSpeedRangeChanged" />
+                        <Slider x:Name="MaxSpeedSlider" Minimum="0" Maximum="250" TickFrequency="5" IsSnapToTickEnabled="True"
+                                Style="{StaticResource RangeSliderStyle}" ValueChanged="OnSpeedRangeChanged" />
+                    </Grid>
 
-        <TextBlock Grid.Row="2" x:Name="SpeedRangeLabel" Text="Active between 60-150 kts" Margin="0,0,0,2" />
-        <Grid Grid.Row="3" Height="24" Margin="0,0,0,10">
-            <Grid x:Name="SpeedRangeFillGrid" VerticalAlignment="Center" Height="6">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition x:Name="BelowMinColumn" Width="60*" />
-                    <ColumnDefinition x:Name="InRangeColumn" Width="90*" />
-                    <ColumnDefinition x:Name="AboveMaxColumn" Width="100*" />
-                </Grid.ColumnDefinitions>
-                <Border Grid.Column="0" Background="#33000000" CornerRadius="3" />
-                <Border Grid.Column="1" Background="#FF3B82C4" CornerRadius="3" />
-                <Border Grid.Column="2" Background="#33000000" CornerRadius="3" />
-            </Grid>
-            <Slider x:Name="MinSpeedSlider" Minimum="0" Maximum="250" TickFrequency="5" IsSnapToTickEnabled="True"
-                    Style="{StaticResource RangeSliderStyle}" ValueChanged="OnSpeedRangeChanged" />
-            <Slider x:Name="MaxSpeedSlider" Minimum="0" Maximum="250" TickFrequency="5" IsSnapToTickEnabled="True"
-                    Style="{StaticResource RangeSliderStyle}" ValueChanged="OnSpeedRangeChanged" />
-        </Grid>
+                    <DockPanel Grid.Row="3" LastChildFill="False">
+                        <CheckBox DockPanel.Dock="Left" x:Name="EnabledCheckBox" Content="Enabled" VerticalAlignment="Center"
+                                  Margin="0,0,14,0" Checked="OnSettingChanged" Unchecked="OnSettingChanged" />
+                        <Button DockPanel.Dock="Right" x:Name="RepairButton" Content="Repair all" Padding="8,3"
+                                VerticalAlignment="Center" Click="OnRepairClicked" />
+                        <StackPanel DockPanel.Dock="Left" x:Name="EnginesPanel" Orientation="Horizontal" VerticalAlignment="Center" />
+                    </DockPanel>
+                </Grid>
+            </TabItem>
 
-        <StackPanel Grid.Row="4" Orientation="Horizontal">
-            <Button x:Name="RepairButton" Content="Repair all engines" Padding="8,4" VerticalAlignment="Center"
-                    Click="OnRepairClicked" Margin="0,0,12,0" />
-            <StackPanel x:Name="EnginesPanel" Orientation="Horizontal" VerticalAlignment="Center" />
+            <TabItem Header="Position">
+                <Grid x:Name="PositionPanel">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Text="Speed" Width="68" Margin="0,0,4,0" VerticalAlignment="Center" />
+                        <TextBox x:Name="SpeedBox" Style="{StaticResource NumberBoxStyle}" />
+                        <TextBlock Text="kts" Style="{StaticResource UnitStyle}" />
+                    </StackPanel>
+                    <CheckBox Grid.Row="0" Grid.Column="1" x:Name="RightPatternCheckBox" Content="Right-hand pattern"
+                              VerticalAlignment="Center" Margin="0,0,0,6"
+                              Checked="OnPositionValueCommitted" Unchecked="OnPositionValueCommitted" />
+
+                    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,6">
+                        <Button x:Name="OverheadButton" Content="Overhead" Tag="Overhead" Style="{StaticResource PlaceButtonStyle}"
+                                ToolTip="Above the nearest airport" />
+                        <TextBox x:Name="OverheadAglBox" Style="{StaticResource NumberBoxStyle}" />
+                        <TextBlock Text="ft AGL" Style="{StaticResource UnitStyle}" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,6">
+                        <Button x:Name="DownwindButton" Content="Downwind" Tag="Downwind" Style="{StaticResource PlaceButtonStyle}"
+                                ToolTip="Midway downwind of the runway favoured by the wind" />
+                        <TextBox x:Name="DownwindAglBox" Style="{StaticResource NumberBoxStyle}" />
+                        <TextBlock Text="ft AGL" Style="{StaticResource UnitStyle}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,6">
+                        <Button x:Name="BaseButton" Content="Base" Tag="Base" Style="{StaticResource PlaceButtonStyle}"
+                                ToolTip="On base for the runway favoured by the wind (3° glidepath distance)" />
+                        <TextBox x:Name="BaseAglBox" Style="{StaticResource NumberBoxStyle}" />
+                        <TextBlock Text="ft AGL" Style="{StaticResource UnitStyle}" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,6">
+                        <Button x:Name="FinalButton" Content="Final" Tag="Final" Style="{StaticResource PlaceButtonStyle}"
+                                ToolTip="On final for the runway favoured by the wind (3° glidepath)" />
+                        <TextBox x:Name="FinalAglBox" Style="{StaticResource NumberBoxStyle}" />
+                        <TextBlock Text="ft AGL" Style="{StaticResource UnitStyle}" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="3" Grid.ColumnSpan="2" x:Name="PositionStatusText" FontSize="11" Foreground="Gray"
+                               VerticalAlignment="Bottom" TextTrimming="CharacterEllipsis" />
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,3,4,0"
+                    IsHitTestVisible="False">
+            <TextBlock x:Name="SimConnectStatusText" Text="SimConnect ✕" FontSize="11" Foreground="Gray"
+                       VerticalAlignment="Center" Margin="0,0,10,0" />
+            <TextBlock x:Name="MenuStatusText" Text="Menu ✕" FontSize="11" Foreground="Gray"
+                       VerticalAlignment="Center" />
         </StackPanel>
     </Grid>
 </Window>
+

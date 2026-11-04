@@ -31,3 +31,14 @@ dotnet run --project src/FailSharp
 The app starts minimized to the system tray (icon may be under the taskbar's overflow "^" arrow the first time Windows shows it). Open settings from the tray icon, or — once MSFS is running and connected — from **Add-ons → FailSharp Setup** inside the sim.
 
 Settings (enabled/disabled, failure probability, check interval, eligible engines) are stored at `%APPDATA%\FailSharp\settings.json` and take effect immediately; there's no separate save step.
+
+## Position tab
+
+Puts the aircraft into level flight at an editable airspeed (default 90 kts) near the nearest airport with a usable runway:
+
+- **Overhead** — above the airport reference point (default 2000 ft above field elevation).
+- **Downwind** — abeam runway midpoint, 1 NM to the pattern side, flying the reciprocal (default 1000 ft).
+- **Base** — 1 NM to the pattern side, at the distance that puts base + final on a 3° glidepath (default 1000 ft).
+- **Final** — on the extended centerline at 3° glidepath distance (default 800 ft ≈ 2.5 NM).
+
+The runway is the end with the most headwind from the sim's ambient wind (among ends within 3 kts of the best headwind, the longest wins; in calm wind the longest runway). Left-hand traffic unless "Right-hand pattern" is ticked. Airports and runways come from the SimConnect facility API on the native connection; the move itself uses `Initial Position`.

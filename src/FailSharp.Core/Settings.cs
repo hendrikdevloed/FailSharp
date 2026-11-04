@@ -11,6 +11,14 @@ public sealed class FailureSettings
     public double MinSpeedKts { get; set; } = 60.0;
     public double MaxSpeedKts { get; set; } = 150.0;
 
+    // Aircraft positioning ("Position" tab). Heights are above the airport/runway elevation.
+    public double PositionSpeedKts { get; set; } = 90.0;
+    public double OverheadAglFt { get; set; } = 2000.0;
+    public double DownwindAglFt { get; set; } = 1000.0;
+    public double BaseAglFt { get; set; } = 1000.0;
+    public double FinalAglFt { get; set; } = 800.0;
+    public bool RightHandPattern { get; set; }
+
     /// <summary>UI preference (window stays topmost so focusing the sim doesn't hide it), not a failure parameter — kept here rather than in a second settings file for one bool.</summary>
     public bool AlwaysOnTop { get; set; } = true;
 }
