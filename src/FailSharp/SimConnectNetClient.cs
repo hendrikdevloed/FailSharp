@@ -42,6 +42,25 @@ public sealed class SimConnectNetClient : ISimVarClient, IAsyncDisposable
         return (lat, lon, windDir, windKts);
     }
 
+    /// <summary>True heading of the runway the sim's ATC has selected for the user aircraft, or null if none is selected.</summary>
+    public async Task<double?> GetAtcRunwayHeadingAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var selected = await _client.SimVars.GetAsync<int>("ATC RUNWAY SELECTED", "Bool", cancellationToken: ct).ConfigureAwait(false);
+            if (selected == 0)
+            {
+                return null;
+            }
+
+            return await _client.SimVars.GetAsync<double>("ATC RUNWAY HEADING DEGREES TRUE", "degrees", cancellationToken: ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null; // optional information; never block positioning on it
+        }
+    }
+
     public async Task<bool> IsEngineRunningAsync(int engineIndex, CancellationToken ct = default) =>
         await _client.SimVars.GetAsync<int>($"GENERAL ENG COMBUSTION:{engineIndex}", "Bool", cancellationToken: ct).ConfigureAwait(false) != 0;
 

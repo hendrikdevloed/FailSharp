@@ -45,6 +45,68 @@ public class PositioningTests
         Assert.Null(PatternPlanner.SelectLandingEnd(new[] { water }, 90, 10));
     }
 
+    private static readonly RunwayReference Kept18 = new(180, "18", "kept");
+
+    [Theory]
+    [InlineData(10, 4)]   // light and variable, now slightly favouring 36
+    [InlineData(80, 20)]  // strong near-crosswind, a few knots of tail on 18
+    [InlineData(100, 20)] // ...and the gust swings to the other side
+    public void ChooseLandingEnd_KeepsPreviousEndWhileWindTolerates(double windFrom, double windKts)
+    {
+        var selection = PatternPlanner.ChooseLandingEnd(new[] { Rwy36 }, windFrom, windKts, Kept18);
+
+        Assert.Equal("18", selection!.End.Name);
+        Assert.Equal("kept", selection.Reason);
+    }
+
+    [Fact]
+    public void ChooseLandingEnd_SwitchesWhenTailwindTooStrong()
+    {
+        var selection = PatternPlanner.ChooseLandingEnd(new[] { Rwy36 }, windFromTrue: 0, windKts: 8, Kept18);
+
+        Assert.Equal("36", selection!.End.Name);
+        Assert.Equal("wind", selection.Reason);
+    }
+
+    [Fact]
+    public void ChooseLandingEnd_SwitchesWhenAnotherRunwayIsMuchBetter()
+    {
+        // Previous 09 now has 20 kt of pure crosswind; 36 gets the full 20 kt as headwind.
+        var selection = PatternPlanner.ChooseLandingEnd(Field.Runways, 0, 20, new RunwayReference(90, "09", "kept"));
+
+        Assert.Equal("36", selection!.End.Name);
+    }
+
+    [Fact]
+    public void ChooseLandingEnd_AtcRunwayWinsInLightWind_MatchedByHeading()
+    {
+        var atc = new RunwayReference(92, null, "ATC");
+
+        var selection = PatternPlanner.ChooseLandingEnd(Field.Runways, 270, 3, atc, Kept18);
+
+        Assert.Equal("09", selection!.End.Name);
+        Assert.Equal("ATC", selection.Reason);
+    }
+
+    [Fact]
+    public void ChooseLandingEnd_AtcRunwayFromAnotherAirport_FallsBackToPrevious()
+    {
+        var atc = new RunwayReference(135, null, "ATC"); // no 13/31 here
+
+        var selection = PatternPlanner.ChooseLandingEnd(Field.Runways, 0, 2, atc, Kept18);
+
+        Assert.Equal("18", selection!.End.Name);
+    }
+
+    [Fact]
+    public void ChooseLandingEnd_NoReference_LightWind_PicksLongest()
+    {
+        var selection = PatternPlanner.ChooseLandingEnd(Field.Runways, 90, 4);
+
+        Assert.Equal(6000, selection!.End.Runway.LengthFt);
+        Assert.Equal("longest", selection.Reason);
+    }
+
     [Fact]
     public void Final_IsOnExtendedCenterlineAtGlidepathDistance()
     {

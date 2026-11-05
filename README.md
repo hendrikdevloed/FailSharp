@@ -41,4 +41,11 @@ Puts the aircraft into level flight at an editable airspeed (default 90 kts) nea
 - **Base** — 1 NM to the pattern side, at the distance that puts base + final on a 3° glidepath (default 1000 ft).
 - **Final** — on the extended centerline at 3° glidepath distance (default 800 ft ≈ 2.5 NM).
 
-The runway is the end with the most headwind from the sim's ambient wind (among ends within 3 kts of the best headwind, the longest wins; in calm wind the longest runway). Left-hand traffic unless "Right-hand pattern" is ticked. Airports and runways come from the SimConnect facility API on the native connection; the move itself uses `Initial Position`.
+Runway choice, with hysteresis so light/variable winds or a gusty near-crosswind don't flip the pattern on every click:
+
+1. **Reference end** — the runway the sim's ATC has selected (`ATC RUNWAY SELECTED` / `ATC RUNWAY HEADING DEGREES TRUE`, only set once you've talked to ATC), if it matches an end of this airport within 15°; otherwise the end used on the previous click at this airport. It is kept as long as its tailwind is at most 5 kts and no other end has 10+ kts more headwind.
+2. **Otherwise** — the end with the most headwind (among ends within 3 kts of the best, the longest wins); below 5 kts of wind, the longest runway.
+
+The status line shows `(ATC)`, `(kept)` or `(longest)` when the choice wasn't purely the wind. Left-hand traffic unless "Right-hand pattern" is ticked. Airports and runways come from the SimConnect facility API on the native connection; the move itself uses `Initial Position`.
+
+Every placement first repairs all engines and, if any engine isn't running after the move, triggers the sim's engine auto-start (Ctrl+E). Throttle is left where it was.

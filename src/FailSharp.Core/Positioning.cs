@@ -24,6 +24,12 @@ public sealed record RunwayEnd(
     double HeadwindKts,
     double CrosswindKts);
 
+/// <summary>A landing direction to stick to when the wind allows: matched by end name first, else by heading.</summary>
+public sealed record RunwayReference(double LandingHeadingTrue, string? Name, string Source);
+
+/// <summary>The chosen end and why ("ATC", "kept", "wind", "longest").</summary>
+public sealed record RunwaySelection(RunwayEnd End, string Reason);
+
 public enum PositionTarget
 {
     Overhead,
@@ -88,8 +94,8 @@ public static class PatternPlanner
 
     public const double GlidepathDegrees = 3.0;
 
-    /// <summary>Below this the wind is treated as calm and the longest runway wins.</summary>
-    public const double CalmWindKts = 3.0;
+    /// <summary>Below this the wind is treated as light/variable: with no reference to stick to, the longest runway wins.</summary>
+    public const double CalmWindKts = 5.0;
 
     /// <summary>Ends whose headwind is within this margin of the best one are considered equally good; the longest of them wins.</summary>
     public const double HeadwindToleranceKts = 3.0;
@@ -110,8 +116,27 @@ public static class PatternPlanner
         yield return MakeEnd(runway, EndName(runway.SecondaryNumber, runway.SecondaryDesignator, secondaryHeading), secondaryHeading, secondaryThreshold, windFromTrue, windKts);
     }
 
+    /// <summary>A reference runway stays in use until its tailwind exceeds this...</summary>
+    public const double MaxTailwindKts = 5.0;
+
+    /// <summary>...or until another end offers at least this much more headwind.</summary>
+    public const double SwitchMarginKts = 10.0;
+
+    /// <summary>A reference landing heading matches a runway end within this many degrees.</summary>
+    public const double ReferenceHeadingToleranceDeg = 15.0;
+
     /// <summary>Returns the most likely landing runway end, or null if the airport has no usable (non-water) runway.</summary>
-    public static RunwayEnd? SelectLandingEnd(IEnumerable<RunwayInfo> runways, double windFromTrue, double windKts)
+    public static RunwayEnd? SelectLandingEnd(IEnumerable<RunwayInfo> runways, double windFromTrue, double windKts) =>
+        ChooseLandingEnd(runways, windFromTrue, windKts)?.End;
+
+    /// <summary>
+    /// Chooses the landing end with hysteresis. <paramref name="references"/> are tried in order (e.g. the
+    /// sim ATC's runway, then the end used last time here); the first one that matches an end of this
+    /// airport is kept as long as the wind tolerates it — tailwind at most <see cref="MaxTailwindKts"/>
+    /// and no other end better by <see cref="SwitchMarginKts"/> of headwind. That keeps light/variable
+    /// winds and gusty near-crosswinds from flipping the pattern on every click.
+    /// </summary>
+    public static RunwaySelection? ChooseLandingEnd(IEnumerable<RunwayInfo> runways, double windFromTrue, double windKts, params RunwayReference?[] references)
     {
         var usable = runways.Where(r => r.PrimaryDesignator != DesignatorWater && r.LengthFt > 0).ToList();
         if (usable.Count == 0)
@@ -120,19 +145,61 @@ public static class PatternPlanner
         }
 
         var ends = usable.SelectMany(r => Ends(r, windFromTrue, windKts)).ToList();
+        var best = ends.Max(e => e.HeadwindKts);
+
+        foreach (var reference in references)
+        {
+            if (reference is null)
+            {
+                continue;
+            }
+
+            var match = FindEnd(ends, reference);
+            if (match is null)
+            {
+                continue; // e.g. the ATC runway belongs to another airport; try the next reference
+            }
+
+            if (-match.HeadwindKts <= MaxTailwindKts && match.HeadwindKts >= best - SwitchMarginKts)
+            {
+                return new RunwaySelection(match, reference.Source);
+            }
+
+            break; // the wind clearly overrides the reference
+        }
 
         if (windKts < CalmWindKts)
         {
-            // Calm: the longest runway, in whichever direction still has the (tiny) headwind.
-            return ends.OrderByDescending(e => e.Runway.LengthFt).ThenByDescending(e => e.HeadwindKts).First();
+            // Calm and nothing to stick to: the longest runway, in whichever direction still has the (tiny) headwind.
+            return new RunwaySelection(ends.OrderByDescending(e => e.Runway.LengthFt).ThenByDescending(e => e.HeadwindKts).First(), "longest");
         }
 
-        var best = ends.Max(e => e.HeadwindKts);
-        return ends
+        var chosen = ends
             .Where(e => e.HeadwindKts >= best - HeadwindToleranceKts)
             .OrderByDescending(e => e.Runway.LengthFt)
             .ThenByDescending(e => e.HeadwindKts)
             .First();
+        return new RunwaySelection(chosen, "wind");
+    }
+
+    private static RunwayEnd? FindEnd(IReadOnlyList<RunwayEnd> ends, RunwayReference reference)
+    {
+        if (reference.Name is { Length: > 0 } name && ends.FirstOrDefault(e => e.Name == name) is { } byName)
+        {
+            return byName;
+        }
+
+        return ends
+            .Where(e => AngleDifference(e.LandingHeadingTrue, reference.LandingHeadingTrue) <= ReferenceHeadingToleranceDeg)
+            .OrderBy(e => AngleDifference(e.LandingHeadingTrue, reference.LandingHeadingTrue))
+            .ThenByDescending(e => e.Runway.LengthFt)
+            .FirstOrDefault();
+    }
+
+    private static double AngleDifference(double a, double b)
+    {
+        var d = Geo.NormalizeDegrees(a - b);
+        return d > 180.0 ? 360.0 - d : d;
     }
 
     /// <summary>Distance from the threshold at which a 3° glidepath passes the given height.</summary>

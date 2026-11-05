@@ -19,6 +19,9 @@ public sealed class AircraftPositioner
     private readonly FailureEngine _failureEngine;
     private readonly ConcurrentDictionary<string, AirportInfo> _airportCache = new();
 
+    /// <summary>Last landing end used per airport, for hysteresis across clicks (not persisted: it's about the current weather).</summary>
+    private readonly ConcurrentDictionary<string, RunwayReference> _lastEnds = new();
+
     public AircraftPositioner(SimConnectNetClient simVarClient, NativeControlClient nativeClient, FailureEngine failureEngine)
     {
         _simVarClient = simVarClient;
@@ -37,6 +40,8 @@ public sealed class AircraftPositioner
         }
 
         var (lat, lon, windFrom, windKts) = await _simVarClient.GetPositionAndWindAsync(ct).ConfigureAwait(false);
+        var atcHeading = await _simVarClient.GetAtcRunwayHeadingAsync(ct).ConfigureAwait(false);
+        var atcReference = atcHeading is { } h ? new RunwayReference(h, null, "ATC") : null;
         var airports = await _nativeClient.GetNearbyAirportsAsync(ct).ConfigureAwait(false);
 
         foreach (var candidate in airports
@@ -45,11 +50,15 @@ public sealed class AircraftPositioner
                      .Take(MaxAirportsTried))
         {
             var airport = await GetAirportCachedAsync(candidate, ct).ConfigureAwait(false);
-            var end = PatternPlanner.SelectLandingEnd(airport.Runways, windFrom, windKts);
-            if (end is null)
+            _lastEnds.TryGetValue(airport.Ident, out var lastReference);
+            var selection = PatternPlanner.ChooseLandingEnd(airport.Runways, windFrom, windKts, atcReference, lastReference);
+            if (selection is null)
             {
                 continue;
             }
+
+            var end = selection.End;
+            _lastEnds[airport.Ident] = new RunwayReference(end.LandingHeadingTrue, end.Name, "kept");
 
             // Clear any (simulated or sim-native) engine failure first so the aircraft arrives healthy.
             await _failureEngine.RepairAllAsync(ct).ConfigureAwait(false);
@@ -70,7 +79,8 @@ public sealed class AircraftPositioner
                 PositionTarget.Base => $"base {end.Name}",
                 _ => $"final {end.Name}",
             };
-            return $"{airport.Ident} {where} · wind {wind}" + (started ? " · engine start" : string.Empty);
+            var why = selection.Reason == "wind" ? string.Empty : $" ({selection.Reason})";
+            return $"{airport.Ident} {where}{why} · wind {wind}" + (started ? " · engine start" : string.Empty);
         }
 
         throw new InvalidOperationException("No airport with a usable runway found nearby.");
